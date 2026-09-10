@@ -1,33 +1,17 @@
-const express = require('express');
-const path = require('path');
-const { DEFAULT_CONFIG, loadConfig, saveConfig, buildSystemPrompt } = require('./api/config-lib');
+const { DEFAULT_CONFIG, loadConfig, buildSystemPrompt } = require('./config-lib');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/api/config', (req, res) => {
-  const config = loadConfig();
-  const safe = { ...config };
-  if (safe.apiKey) safe.apiKey = safe.apiKey.slice(0, 8) + '...' + safe.apiKey.slice(-4);
-  res.json(safe);
-});
-
-app.post('/api/config', (req, res) => {
-  const current = loadConfig();
-  const updated = { ...current, ...req.body };
-  saveConfig(updated);
-  res.json({ ok: true });
-});
-
-app.post('/api/chat', async (req, res) => {
   const serverConfig = loadConfig();
   const { messages, config: clientConfig } = req.body || {};
+
   const config = { ...serverConfig, ...(clientConfig || {}) };
 
-  if (!config.apiKey) {
+  const apiKey = config.apiKey;
+  if (!apiKey) {
     return res.status(400).json({ error: 'API key not configured. Set it in the admin panel.' });
   }
 
@@ -39,7 +23,7 @@ app.post('/api/chat', async (req, res) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.apiKey}`
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: config.model,
@@ -93,13 +77,4 @@ app.post('/api/chat', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-app.listen(PORT, () => {
-  console.log(`Guruji running at http://localhost:${PORT}`);
-  console.log(`Admin panel at http://localhost:${PORT}/admin`);
-});
+};

@@ -147,10 +147,11 @@ async function send() {
   const bodyEl = typingEl.querySelector('.message-body');
 
   try {
+    const clientConfig = JSON.parse(localStorage.getItem('guruji_config') || '{}');
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: conv.messages })
+      body: JSON.stringify({ messages: conv.messages, config: clientConfig })
     });
 
     if (!res.ok) {

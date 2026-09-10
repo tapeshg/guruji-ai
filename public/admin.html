@@ -282,19 +282,30 @@
     });
 
     async function loadConfig() {
-      const res = await fetch('/api/config');
-      const config = await res.json();
-      fields.forEach(f => {
-        const el = document.getElementById(f);
-        if (el && config[f] !== undefined) {
-          if (f === 'apiKey') el.value = '';
-          else el.value = config[f];
+      try {
+        const res = await fetch('/api/config');
+        const config = await res.json();
+        fields.forEach(f => {
+          const el = document.getElementById(f);
+          if (el && config[f] !== undefined) {
+            if (f === 'apiKey') el.value = '';
+            else el.value = config[f];
+          }
+        });
+        if (config.model && !['gpt-4o','gpt-4o-mini','gpt-4-turbo','claude-3-5-sonnet-20241022','claude-3-opus-20240229','gemini-2.0-flash','gemini-2.5-pro','llama-3.1-405b'].includes(config.model)) {
+          document.getElementById('model').value = 'custom';
+          document.getElementById('customModelField').style.display = 'block';
+          document.getElementById('customModel').value = config.model;
         }
-      });
-      if (config.model && !['gpt-4o','gpt-4o-mini','gpt-4-turbo','claude-3-5-sonnet-20241022','claude-3-opus-20240229','gemini-2.0-flash','gemini-2.5-pro','llama-3.1-405b'].includes(config.model)) {
-        document.getElementById('model').value = 'custom';
-        document.getElementById('customModelField').style.display = 'block';
-        document.getElementById('customModel').value = config.model;
+      } catch (e) {
+        const local = JSON.parse(localStorage.getItem('guruji_config') || '{}');
+        fields.forEach(f => {
+          const el = document.getElementById(f);
+          if (el && local[f] !== undefined) {
+            if (f === 'apiKey') el.value = '';
+            else el.value = local[f];
+          }
+        });
       }
     }
 
@@ -312,11 +323,15 @@
         }
       });
 
-      await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
+      localStorage.setItem('guruji_config', JSON.stringify(data));
+
+      try {
+        await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch (e) {}
 
       const status = document.getElementById('status');
       status.classList.add('show');
@@ -325,18 +340,20 @@
 
     async function resetDefaults() {
       if (!confirm('Reset all settings to defaults?')) return;
+      const defaults = {
+        apiKey: '',
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'gpt-4o',
+        temperature: '0.7',
+        teachingStyle: 'feynman',
+        maxTokens: '2048',
+        context: ''
+      };
+      localStorage.setItem('guruji_config', JSON.stringify(defaults));
       await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          apiKey: '',
-          baseUrl: 'https://api.openai.com/v1',
-          model: 'gpt-4o',
-          temperature: '0.7',
-          teachingStyle: 'feynman',
-          maxTokens: '2048',
-          context: ''
-        })
+        body: JSON.stringify(defaults)
       });
       loadConfig();
     }
