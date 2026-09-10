@@ -28,8 +28,8 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         model: config.model,
         messages: allMessages,
-        max_tokens: config.maxTokens,
-        temperature: config.temperature,
+        max_tokens: parseInt(config.maxTokens, 10) || 2048,
+        temperature: parseFloat(config.temperature) || 0.7,
         stream: true
       })
     });

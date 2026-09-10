@@ -317,6 +317,8 @@
           if (f === 'apiKey' && !el.value) return;
           if (f === 'model' && el.value === 'custom') {
             data.model = document.getElementById('customModel').value;
+          } else if (f === 'temperature' || f === 'maxTokens') {
+            data[f] = Number(el.value);
           } else {
             data[f] = el.value;
           }
