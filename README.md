@@ -50,12 +50,12 @@ Settings are stored in your browser's localStorage and sent with each request, s
 api/chat.js       # chat/completions proxy with streaming
 api/config.js     # config read/write
 api/config-lib.js # shared config + system prompt builder
-public/index.html # chat UI
-public/admin.html # admin panel
-public/css/       # styles
-public/js/        # chat + config logic
+css/style.css     # chat + admin styles
+js/app.js         # chat + config logic
+index.html        # chat UI
+admin.html        # admin panel
 server.js         # local dev server
-vercel.json       # static + rewrite config
+vercel.json       # rewrites config
 ```
 
 ## License
