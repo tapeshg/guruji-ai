@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guruji — Admin Panel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface-2: #1a1a1a;
+      --border: #262626;
+      --text: #e5e5e5;
+      --text-dim: #737373;
+      --accent: #a3e635;
+      --accent-dim: #4d7c0f;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .header {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .header h1 span { color: var(--accent); }
+
+    .back-link {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.15s;
+    }
+
+    .back-link:hover { color: var(--accent); }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 32px;
+    }
+
+    .section {
+      margin-bottom: 48px;
+    }
+
+    .section h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .section p {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+    }
+
+    .field {
+      margin-bottom: 20px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .field input, .field select, .field textarea {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+
+    .field input:focus, .field select:focus, .field textarea:focus {
+      outline: none;
+      border-color: var(--accent-dim);
+    }
+
+    .field textarea {
+      min-height: 280px;
+      resize: vertical;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .field select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23737373' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover { opacity: 0.9; }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      margin-left: 8px;
+    }
+
+    .status {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--accent);
+      display: none;
+    }
+
+    .status.show { display: block; }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 48px 0;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 6px;
+    }
+
+    @media (max-width: 640px) {
+      .container { padding: 24px 16px; }
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>guruji<span>.</span> admin</h1>
+    <a href="/" class="back-link">Back to chat</a>
+  </div>
+
+  <div class="container">
+    <div class="section">
+      <h2>API Configuration</h2>
+      <p>Connect to any OpenAI-compatible API.</p>
+
+      <div class="field">
+        <label>API Key</label>
+        <input type="password" id="apiKey" placeholder="sk-...">
+      </div>
+
+      <div class="field">
+        <label>Base URL</label>
+        <input type="text" id="baseUrl" placeholder="https://api.openai.com/v1">
+        <div class="hint">Use OpenRouter, Together, Groq, or any OpenAI-compatible endpoint.</div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Model</label>
+          <select id="model">
+            <option value="gpt-4o">GPT-4o</option>
+            <option value="gpt-4o-mini">GPT-4o Mini</option>
+            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+            <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+            <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+            <option value="llama-3.1-405b">Llama 3.1 405B</option>
+            <option value="custom">Custom model name</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Temperature</label>
+          <input type="number" id="temperature" min="0" max="2" step="0.1" placeholder="0.7">
+        </div>
+      </div>
+
+      <div class="field" id="customModelField" style="display:none">
+        <label>Custom Model Name</label>
+        <input type="text" id="customModel" placeholder="model-name">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+      <h2>Teaching System Prompt</h2>
+      <p>Define how Guruji teaches. The default uses the Feynman method.</p>
+
+      <div class="field">
+        <textarea id="systemPrompt"></textarea>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+      <h2>Teaching Harness</h2>
+      <p>Control the structure and style of each lesson.</p>
+
+      <div class="row">
+        <div class="field">
+          <label>Teaching Style</label>
+          <select id="teachingStyle">
+            <option value="feynman">Feynman Method (default)</option>
+            <option value="socratic">Socratic Questioning</option>
+            <option value="project-based">Project-Based Learning</option>
+            <option value="spaced">Spaced Repetition</option>
+            <option value="freeform">Freeform Discussion</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Max Tokens</label>
+          <input type="number" id="maxTokens" min="256" max="16384" step="256" placeholder="2048">
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+      <h2>Context Injection</h2>
+      <p>Add background knowledge or constraints that Guruji always has access to.</p>
+
+      <div class="field">
+        <textarea id="context" style="min-height: 160px" placeholder="Example: The student is a software engineer learning systems design. Focus on distributed systems concepts. Use examples from real-world architectures like Netflix, Uber, and AWS."></textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" onclick="save()">Save Configuration</button>
+      <button class="btn btn-secondary" onclick="resetDefaults()">Reset to Defaults</button>
+      <span class="status" id="status">Saved</span>
+    </div>
+  </div>
+
+  <script>
+    const fields = ['apiKey', 'baseUrl', 'model', 'temperature', 'systemPrompt', 'teachingStyle', 'maxTokens', 'context'];
+
+    document.getElementById('model').addEventListener('change', function() {
+      document.getElementById('customModelField').style.display = this.value === 'custom' ? 'block' : 'none';
+    });
+
+    async function loadConfig() {
+      const res = await fetch('/api/config');
+      const config = await res.json();
+      fields.forEach(f => {
+        const el = document.getElementById(f);
+        if (el && config[f] !== undefined) {
+          if (f === 'apiKey') el.value = '';
+          else el.value = config[f];
+        }
+      });
+      if (config.model && !['gpt-4o','gpt-4o-mini','gpt-4-turbo','claude-3-5-sonnet-20241022','claude-3-opus-20240229','gemini-2.0-flash','gemini-2.5-pro','llama-3.1-405b'].includes(config.model)) {
+        document.getElementById('model').value = 'custom';
+        document.getElementById('customModelField').style.display = 'block';
+        document.getElementById('customModel').value = config.model;
+      }
+    }
+
+    async function save() {
+      const data = {};
+      fields.forEach(f => {
+        const el = document.getElementById(f);
+        if (el) {
+          if (f === 'apiKey' && !el.value) return;
+          if (f === 'model' && el.value === 'custom') {
+            data.model = document.getElementById('customModel').value;
+          } else {
+            data[f] = el.value;
+          }
+        }
+      });
+
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      const status = document.getElementById('status');
+      status.classList.add('show');
+      setTimeout(() => status.classList.remove('show'), 2000);
+    }
+
+    async function resetDefaults() {
+      if (!confirm('Reset all settings to defaults?')) return;
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: '',
+          baseUrl: 'https://api.openai.com/v1',
+          model: 'gpt-4o',
+          temperature: '0.7',
+          teachingStyle: 'feynman',
+          maxTokens: '2048',
+          context: ''
+        })
+      });
+      loadConfig();
+    }
+
+    loadConfig();
+  </script>
+</body>
+</html>

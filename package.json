@@ -1,0 +1,12 @@
+{
+  "name": "guruji",
+  "version": "1.0.0",
+  "description": "AI teacher with Feynman learning method",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
