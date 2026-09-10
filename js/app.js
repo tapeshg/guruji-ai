@@ -2,6 +2,18 @@ let conversations = JSON.parse(localStorage.getItem('guruji_conversations') || '
 let currentConvId = null;
 let isStreaming = false;
 
+const PROMPT_VER = 2;
+
+function loadClientConfig() {
+  const cfg = JSON.parse(localStorage.getItem('guruji_config') || '{}');
+  if (cfg.promptVer !== PROMPT_VER) {
+    delete cfg.systemPrompt;
+    cfg.promptVer = PROMPT_VER;
+    localStorage.setItem('guruji_config', JSON.stringify(cfg));
+  }
+  return cfg;
+}
+
 const messagesEl = document.getElementById('messages');
 const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
@@ -147,7 +159,7 @@ async function send() {
   const bodyEl = typingEl.querySelector('.message-body');
 
   try {
-    const clientConfig = JSON.parse(localStorage.getItem('guruji_config') || '{}');
+    const clientConfig = loadClientConfig();
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

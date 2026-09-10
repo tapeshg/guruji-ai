@@ -326,7 +326,7 @@
         }
       });
 
-      localStorage.setItem('guruji_config', JSON.stringify(data));
+      localStorage.setItem('guruji_config', JSON.stringify({ ...data, promptVer: 2 }));
 
       try {
         await fetch('/api/config', {
