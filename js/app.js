@@ -134,6 +134,179 @@ function handleKey(e) {
   }
 }
 
+/* ============ Voice Mode ============ */
+
+const voiceToggle = document.getElementById('voiceToggle');
+const voiceStatus = document.getElementById('voiceStatus');
+const voiceLang = document.getElementById('voiceLang');
+const micBtn = document.getElementById('micBtn');
+
+let voiceMode = false;
+let voiceActive = false;
+let micPushTalk = false;
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognizer = null;
+
+function setVoiceStatus(text, live) {
+  voiceStatus.textContent = text;
+  voiceStatus.classList.toggle('live', !!live);
+}
+
+function initRecognizer() {
+  if (!SR) { setVoiceStatus('Voice not supported in this browser'); return; }
+  recognizer = new SR();
+  recognizer.continuous = true;
+  recognizer.interimResults = true;
+  recognizer.lang = voiceLang.value;
+
+  recognizer.onresult = (event) => {
+    let finalText = '';
+    let interimText = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const res = event.results[i];
+      if (res.isFinal) finalText += res[0].transcript + ' ';
+      else interimText += res[0].transcript;
+    }
+    if (interimText) {
+      inputEl.value = (finalText + interimText).trim();
+      autoResize();
+    }
+    if (finalText.trim() && !isStreaming) {
+      if (!currentConvId) newChat();
+      if (!inputEl.value.trim() || inputEl.value === finalText.trim()) inputEl.value = finalText.trim();
+      stopListening();
+      send();
+    }
+  };
+
+  recognizer.onerror = (event) => {
+    if (event.error !== 'aborted' && event.error !== 'no-speech') {
+      setVoiceStatus('Mic error: ' + event.error);
+    }
+  };
+
+  recognizer.onend = () => {
+    voiceActive = false;
+    toggleMicClass(false);
+    if (voiceMode && !isStreaming && !speechSynthesis.speaking) {
+      startListening();
+    } else if (voiceMode) {
+      setVoiceStatus('Re-listening…');
+    } else {
+      setVoiceStatus('');
+    }
+  };
+}
+
+function startListening() {
+  if (!recognizer) initRecognizer();
+  if (!recognizer || voiceActive) return;
+  try {
+    recognizer.lang = voiceLang.value;
+    recognizer.start();
+    voiceActive = true;
+    toggleMicClass(true);
+    setVoiceStatus('Listening…', true);
+  } catch (e) {}
+}
+
+function stopListening() {
+  if (recognizer && voiceActive) {
+    recognizer.stop();
+    voiceActive = false;
+    toggleMicClass(false);
+    if (!voiceMode) setVoiceStatus('');
+  }
+}
+
+function toggleMicClass(active) {
+  micBtn.classList.toggle('listening', active);
+  if (voiceMode && active) micBtn.classList.add('hidden');
+  else if (!voiceMode) micBtn.classList.remove('hidden');
+}
+
+function toggleVoice() {
+  voiceMode = voiceToggle.checked;
+  localStorage.setItem('guruji_voice', voiceMode ? '1' : '0');
+  if (voiceMode) {
+    speechSynthesis.cancel();
+    stopListening();
+    startListening();
+    if (!voiceActive && !SR) setVoiceStatus('Voice not supported in this browser');
+  } else {
+    stopListening();
+    setVoiceStatus('');
+  }
+}
+
+function toggleMic() {
+  if (voiceMode) return;
+  micPushTalk = !micPushTalk;
+  if (micPushTalk) {
+    startListening();
+    if (!voiceActive) micPushTalk = false;
+  } else {
+    stopListening();
+  }
+}
+
+function updateVoiceLang() {
+  if (recognizer) recognizer.lang = voiceLang.value;
+  localStorage.setItem('guruji_voiceLang', voiceLang.value);
+}
+
+function cleanForSpeech(text) {
+  return text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^>\s?/gm, '')
+    .replace(/^[-•]\s+/gm, '')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/Step \d:/g, 'Step')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function speak(text) {
+  if (!voiceMode) return;
+  const clean = cleanForSpeech(text);
+  if (!clean) return;
+  const utter = new SpeechSynthesisUtterance(clean);
+  utter.lang = voiceLang.value;
+  utter.rate = 1.02;
+  utter.pitch = 1.0;
+  const voices = speechSynthesis.getVoices();
+  const match = voices.find(v => v.lang === utter.lang);
+  if (match) utter.voice = match;
+  speechSynthesis.cancel();
+  setVoiceStatus('Speaking…', true);
+  utter.onend = () => { resumeListeningAfterSpeech(); };
+  utter.onerror = () => { resumeListeningAfterSpeech(); };
+  speechSynthesis.speak(utter);
+}
+
+function resumeListeningAfterSpeech() {
+  if (voiceMode && !isStreaming) {
+    startListening();
+  } else if (voiceMode) {
+    setVoiceStatus('Re-listening…');
+  }
+}
+
+function initVoice() {
+  voiceLang.value = localStorage.getItem('guruji_voiceLang') || 'en-IN';
+  if (localStorage.getItem('guruji_voice') === '1') {
+    voiceToggle.checked = true;
+    voiceMode = true;
+  }
+  if (!SR) setVoiceStatus('Voice not supported in this browser');
+}
+
 async function send() {
   const text = inputEl.value.trim();
   if (!text || isStreaming) return;
@@ -205,15 +378,19 @@ async function send() {
 
     conv.messages.push({ role: 'assistant', content: full });
     saveConversations();
+    speak(full);
   } catch (err) {
     bodyEl.innerHTML = `<p style="color: #ef4444">Network error: ${err.message}</p>`;
+    if (voiceMode) setVoiceStatus('Speak error; resuming…');
   }
 
   typingEl.removeAttribute('id');
   isStreaming = false;
   sendBtn.disabled = false;
   inputEl.focus();
+  if (voiceMode && !speechSynthesis.speaking) resumeListeningAfterSpeech();
 }
 
 renderConversations();
+initVoice();
 inputEl.focus();

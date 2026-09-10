@@ -35,8 +35,24 @@
       </div>
 
       <div class="input-area">
+        <div class="voice-controls">
+          <label class="switch" title="Live voice conversation">
+            <input type="checkbox" id="voiceToggle" onchange="toggleVoice()">
+            <span class="slider"></span>
+            <span class="switch-label">Voice Mode</span>
+          </label>
+          <select id="voiceLang" onchange="updateVoiceLang()" title="Voice language">
+            <option value="en-IN">English (India)</option>
+            <option value="en-US">English (US)</option>
+            <option value="hi-IN">Hindi</option>
+          </select>
+          <span class="voice-status" id="voiceStatus"></span>
+        </div>
         <div class="input-wrapper">
           <textarea id="input" placeholder="Ask anything..." rows="1" onkeydown="handleKey(event)"></textarea>
+          <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Push to talk">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
           <button class="send-btn" id="sendBtn" onclick="send()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
           </button>
