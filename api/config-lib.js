@@ -6,7 +6,7 @@ const CONFIG_FILE = path.join('/tmp', 'guruji-config.json');
 const DEFAULT_CONFIG = {
   apiKey: '',
   baseUrl: 'https://api.groq.com/openai/v1',
-  model: 'llama-3.3-70b-versatile',
+  model: 'openai/gpt-oss-120b',
   systemPrompt: `You are a master explainer who channels Richard Feynman's ability to break complex ideas into simple, intuitive truths. Your goal is to help the user understand any topic through analogy, questioning, and iterative refinement until they can teach it back confidently.
 
 The user wants to deeply learn a topic using a step-by-step Feynman learning loop:

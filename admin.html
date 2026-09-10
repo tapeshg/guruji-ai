@@ -198,14 +198,15 @@
         <div class="field">
           <label>Model</label>
           <select id="model">
-            <option value="llama-3.3-70b-versatile" selected>Llama 3.3 70B (free, recommended)</option>
-            <option value="llama-3.1-8b-instant">Llama 3.1 8B (free, faster)</option>
-            <option value="gemma2-9b-it">Gemma 2 9B (free, fast)</option>
-            <option value="mixtral-8x7b-32768">Mixtral 8x7B (free)</option>
+            <option value="openai/gpt-oss-120b" selected>GPT-OSS 120B (free, best)</option>
+            <option value="openai/gpt-oss-20b">GPT-OSS 20B (free, fast)</option>
+            <option value="qwen/qwen3.8-27b">Qwen 3.8 27B (free)</option>
+            <option value="allam-2-7b">Allam 2 7B (free, fastest)</option>
+            <option value="qwen/qwen3-32b">Qwen3 32B (free)</option>
+            <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout (free)</option>
             <option value="gpt-4o">GPT-4o (OpenAI, paid)</option>
             <option value="gpt-4o-mini">GPT-4o Mini (OpenAI, paid)</option>
             <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (paid)</option>
-            <option value="gemini-2.0-flash">Gemini 2.0 Flash (free tier)</option>
             <option value="custom">Custom model name</option>
           </select>
         </div>
@@ -292,7 +293,7 @@
             else el.value = config[f];
           }
         });
-        if (config.model && !['llama-3.3-70b-versatile','llama-3.1-8b-instant','gemma2-9b-it','mixtral-8x7b-32768','gpt-4o','gpt-4o-mini','gpt-4-turbo','claude-3-5-sonnet-20241022','claude-3-opus-20240229','gemini-2.0-flash','gemini-2.5-pro','llama-3.1-405b'].includes(config.model)) {
+        if (config.model && !['openai/gpt-oss-120b','openai/gpt-oss-20b','qwen/qwen3.8-27b','allam-2-7b','qwen/qwen3-32b','meta-llama/llama-4-scout-17b-16e-instruct','gpt-4o','gpt-4o-mini','gpt-4-turbo','claude-3-5-sonnet-20241022','claude-3-opus-20240229','gemini-2.0-flash','gemini-2.5-pro'].includes(config.model)) {
           document.getElementById('model').value = 'custom';
           document.getElementById('customModelField').style.display = 'block';
           document.getElementById('customModel').value = config.model;
@@ -345,7 +346,7 @@
       const defaults = {
         apiKey: '',
         baseUrl: 'https://api.groq.com/openai/v1',
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         temperature: '0.7',
         teachingStyle: 'feynman',
         maxTokens: '2048',
