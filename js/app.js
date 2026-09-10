@@ -2,7 +2,7 @@ let conversations = JSON.parse(localStorage.getItem('guruji_conversations') || '
 let currentConvId = null;
 let isStreaming = false;
 
-const PROMPT_VER = 2;
+const PROMPT_VER = 3;
 
 function loadClientConfig() {
   const cfg = JSON.parse(localStorage.getItem('guruji_config') || '{}');
