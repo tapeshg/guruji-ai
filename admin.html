@@ -268,6 +268,17 @@
       </div>
     </div>
 
+    <div class="divider"></div>
+
+    <div class="section">
+      <h2>Persistent Memory</h2>
+      <p>Teacher notes that persist across conversations. This is merged with the auto-recorded student profile (name, level, topics) and injected before every lesson.</p>
+
+      <div class="field">
+        <textarea id="memory" style="min-height: 120px" placeholder="Example: Priya studies best with cricket analogies. Her confidence dips on fractions — praise effort there. She wants to reach level 8 before Diwali."></textarea>
+      </div>
+    </div>
+
     <div style="display:flex;align-items:center;gap:12px">
       <button class="btn" onclick="save()">Save Configuration</button>
       <button class="btn btn-secondary" onclick="resetDefaults()">Reset to Defaults</button>
@@ -276,7 +287,7 @@
   </div>
 
   <script>
-    const fields = ['apiKey', 'baseUrl', 'model', 'temperature', 'systemPrompt', 'teachingStyle', 'maxTokens', 'context'];
+    const fields = ['apiKey', 'baseUrl', 'model', 'temperature', 'systemPrompt', 'teachingStyle', 'maxTokens', 'context', 'memory'];
 
     document.getElementById('model').addEventListener('change', function() {
       document.getElementById('customModelField').style.display = this.value === 'custom' ? 'block' : 'none';
@@ -326,7 +337,7 @@
         }
       });
 
-      localStorage.setItem('guruji_config', JSON.stringify({ ...data, promptVer: 4 }));
+      localStorage.setItem('guruji_config', JSON.stringify({ ...data, promptVer: 5 }));
 
       try {
         await fetch('/api/config', {
@@ -350,7 +361,8 @@
         temperature: '0.7',
         teachingStyle: 'feynman',
         maxTokens: '2048',
-        context: ''
+        context: '',
+        memory: ''
       };
       localStorage.setItem('guruji_config', JSON.stringify(defaults));
       await fetch('/api/config', {

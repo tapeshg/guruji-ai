@@ -2,7 +2,7 @@ let conversations = JSON.parse(localStorage.getItem('guruji_conversations') || '
 let currentConvId = null;
 let isStreaming = false;
 
-const PROMPT_VER = 4;
+const PROMPT_VER = 5;
 
 function loadClientConfig() {
   const cfg = JSON.parse(localStorage.getItem('guruji_config') || '{}');
@@ -12,6 +12,55 @@ function loadClientConfig() {
     localStorage.setItem('guruji_config', JSON.stringify(cfg));
   }
   return cfg;
+}
+
+/* ============ Persistent Memory ============ */
+
+function loadMemory() {
+  try {
+    return JSON.parse(localStorage.getItem('guruji_memory') || '{}');
+  } catch (e) { return {}; }
+}
+
+function saveMemory(memo) {
+  localStorage.setItem('guruji_memory', JSON.stringify(memo));
+}
+
+function updateMemory(userText, assistantText) {
+  const memo = loadMemory();
+
+  const nameMatch = (userText + ' ' + (memo.lastUser || '')).match(/\b(?:my name is|called|i am|i'?m)\s+([A-Z][a-zA-Z]{2,})/i);
+  if (nameMatch && !memo.name) memo.name = nameMatch[1][0].toUpperCase() + nameMatch[1].slice(1).toLowerCase();
+
+  const topicMatch = userText.match(/\b(?:teach me|learn|study|understand|explain)\s+(?:about\s+)?(.{2,50}?)(?:\?|\.|$)/i);
+  if (topicMatch && topicMatch[1]) {
+    const topic = topicMatch[1].trim();
+    if (!memo.topics) memo.topics = [];
+    if (!memo.topics.includes(topic)) {
+      memo.topics.push(topic);
+      if (memo.topics.length > 8) memo.topics.shift();
+    }
+    memo.lastTopic = topic;
+  }
+
+  const levelMatch = assistantText.match(/(?:your level|level)[:：]?\s*(\d{1,2})\s*(?:\/\s*10)?/i);
+  if (levelMatch) memo.level = levelMatch[1] + '/10';
+
+  memo.lastUser = userText;
+  memo.updatedAt = new Date().toISOString();
+  saveMemory(memo);
+}
+
+function compileMemory() {
+  const memo = loadMemory();
+  const adminNotes = loadClientConfig().memory || '';
+  const lines = [];
+  if (memo.name) lines.push(`• Name: ${memo.name}`);
+  if (memo.level) lines.push(`• Current level: ${memo.level}`);
+  if (memo.topics && memo.topics.length) lines.push(`• Topics learning: ${memo.topics.slice(-4).join(', ')}`);
+  if (memo.lastTopic) lines.push(`• Currently learning: ${memo.lastTopic}`);
+  if (adminNotes.trim()) lines.push(`• Teacher notes: ${adminNotes.trim()}`);
+  return lines.join('\n');
 }
 
 const messagesEl = document.getElementById('messages');
@@ -308,6 +357,34 @@ function cleanForSpeech(text) {
     .trim();
 }
 
+function splitSentences(text) {
+  const parts = [];
+  let cur = '';
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  for (const s of sentences) {
+    const next = (cur ? cur + ' ' : '') + s;
+    if (next.length > 220 && cur.trim()) {
+      parts.push(cur.trim());
+      cur = s;
+    } else {
+      cur = next;
+    }
+  }
+  if (cur.trim()) parts.push(cur.trim());
+  return parts;
+}
+
+let speechQueue = [];
+let speechIndex = 0;
+
+function pickVoice(lang) {
+  const voices = speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  return voices.find(v => v.lang === lang)
+    || voices.find(v => v.lang && v.lang.startsWith(lang.slice(0, 2)))
+    || voices[0];
+}
+
 function speak(text) {
   if (!voiceMode) return;
   if (!window.speechSynthesis) {
@@ -315,31 +392,40 @@ function speak(text) {
     return;
   }
   const clean = cleanForSpeech(text);
-  if (!clean) {
+  speechQueue = splitSentences(clean);
+  speechIndex = 0;
+  if (!speechQueue.length) {
+    resumeListeningAfterSpeech();
+    return;
+  }
+  speakNextChunk();
+}
+
+function speakNextChunk() {
+  if (!voiceMode) {
+    stopSpeechWatchdog();
+    return;
+  }
+  if (speechIndex >= speechQueue.length) {
+    stopSpeechWatchdog();
     resumeListeningAfterSpeech();
     return;
   }
 
-  const utter = new SpeechSynthesisUtterance(clean);
+  const chunk = speechQueue[speechIndex++];
+  const utter = new SpeechSynthesisUtterance(chunk);
   utter.lang = voiceLang.value;
-  utter.rate = 1.02;
-  utter.pitch = 1.0;
-  const voices = speechSynthesis.getVoices();
-  const match = voices.find(v => v.lang === utter.lang);
-  if (match) utter.voice = match;
+  utter.rate = 1.0;
+  utter.pitch = 1.05;
+  const voice = pickVoice(utter.lang);
+  if (voice) utter.voice = voice;
 
   stopSpeechWatchdog();
   speechSynthesis.cancel();
   setVoiceStatus('Speaking…', true);
 
-  utter.onend = () => {
-    stopSpeechWatchdog();
-    resumeListeningAfterSpeech();
-  };
-  utter.onerror = () => {
-    stopSpeechWatchdog();
-    resumeListeningAfterSpeech();
-  };
+  utter.onend = () => { speakNextChunk(); };
+  utter.onerror = () => { speakNextChunk(); };
 
   setTimeout(() => {
     if (!voiceMode) return;
@@ -347,17 +433,16 @@ function speak(text) {
       speechSynthesis.speak(utter);
       speechSynthesis.resume();
     } catch (e) {
-      stopSpeechWatchdog();
-      resumeListeningAfterSpeech();
+      speakNextChunk();
     }
-  }, 80);
+  }, 60);
 
   speechWatchdog = setInterval(() => {
     if (!speechSynthesis.speaking && !speechSynthesis.pending) {
       stopSpeechWatchdog();
-      resumeListeningAfterSpeech();
+      speakNextChunk();
     }
-  }, 500);
+  }, 400);
 }
 
 function resumeListeningAfterSpeech() {
@@ -416,6 +501,7 @@ async function send() {
 
   try {
     const clientConfig = loadClientConfig();
+    clientConfig.memory = compileMemory();
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -464,6 +550,7 @@ async function send() {
 
     conv.messages.push({ role: 'assistant', content: full });
     saveConversations();
+    updateMemory(text, full);
     speak(full);
   } catch (err) {
     bodyEl.innerHTML = `<p style="color: #ef4444">Network error: ${err.message}</p>`;
