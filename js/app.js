@@ -144,6 +144,10 @@ const micBtn = document.getElementById('micBtn');
 let voiceMode = false;
 let voiceActive = false;
 let micPushTalk = false;
+let pendingSpeech = [];
+let lastFinal = '';
+let speechWatchdog = null;
+let timeoutVoice = null;
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognizer = null;
@@ -151,6 +155,13 @@ let recognizer = null;
 function setVoiceStatus(text, live) {
   voiceStatus.textContent = text;
   voiceStatus.classList.toggle('live', !!live);
+}
+
+function stopSpeechWatchdog() {
+  if (speechWatchdog) {
+    clearInterval(speechWatchdog);
+    speechWatchdog = null;
+  }
 }
 
 function initRecognizer() {
@@ -168,20 +179,35 @@ function initRecognizer() {
       if (res.isFinal) finalText += res[0].transcript + ' ';
       else interimText += res[0].transcript;
     }
-    if (interimText) {
-      inputEl.value = (finalText + interimText).trim();
-      autoResize();
+
+    const finalClean = finalText.trim();
+    if (finalClean) {
+      if (finalClean === lastFinal) return;
+      lastFinal = finalClean;
+      if (isStreaming) {
+        pendingSpeech.push(finalClean);
+        inputEl.value = '';
+      } else {
+        stopListening();
+        inputEl.value = finalClean;
+        send();
+      }
+      return;
     }
-    if (finalText.trim() && !isStreaming) {
-      if (!currentConvId) newChat();
-      if (!inputEl.value.trim() || inputEl.value === finalText.trim()) inputEl.value = finalText.trim();
-      stopListening();
-      send();
+
+    if (interimText && !isStreaming) {
+      inputEl.value = interimText.trim();
+      autoResize();
     }
   };
 
   recognizer.onerror = (event) => {
-    if (event.error !== 'aborted' && event.error !== 'no-speech') {
+    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+      setVoiceStatus('Mic permission denied');
+      voiceActive = false;
+      toggleMicClass(false);
+      micPushTalk = false;
+    } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
       setVoiceStatus('Mic error: ' + event.error);
     }
   };
@@ -189,7 +215,8 @@ function initRecognizer() {
   recognizer.onend = () => {
     voiceActive = false;
     toggleMicClass(false);
-    if (voiceMode && !isStreaming && !speechSynthesis.speaking) {
+    if (!voiceMode) micPushTalk = false;
+    if (voiceMode && !isStreaming && !(window.speechSynthesis && speechSynthesis.speaking)) {
       startListening();
     } else if (voiceMode) {
       setVoiceStatus('Re-listening…');
@@ -206,6 +233,7 @@ function startListening() {
     recognizer.lang = voiceLang.value;
     recognizer.start();
     voiceActive = true;
+    lastFinal = '';
     toggleMicClass(true);
     setVoiceStatus('Listening…', true);
   } catch (e) {}
@@ -229,13 +257,21 @@ function toggleMicClass(active) {
 function toggleVoice() {
   voiceMode = voiceToggle.checked;
   localStorage.setItem('guruji_voice', voiceMode ? '1' : '0');
+  stopSpeechWatchdog();
   if (voiceMode) {
-    speechSynthesis.cancel();
+    if (window.speechSynthesis) speechSynthesis.cancel();
     stopListening();
-    startListening();
-    if (!voiceActive && !SR) setVoiceStatus('Voice not supported in this browser');
+    clearTimeout(timeoutVoice);
+    if (!SR) {
+      setVoiceStatus('Voice not supported in this browser');
+    } else {
+      timeoutVoice = setTimeout(() => { startListening(); }, 200);
+    }
   } else {
+    pendingSpeech = [];
+    clearTimeout(timeoutVoice);
     stopListening();
+    if (window.speechSynthesis) speechSynthesis.cancel();
     setVoiceStatus('');
   }
 }
@@ -274,8 +310,16 @@ function cleanForSpeech(text) {
 
 function speak(text) {
   if (!voiceMode) return;
+  if (!window.speechSynthesis) {
+    resumeListeningAfterSpeech();
+    return;
+  }
   const clean = cleanForSpeech(text);
-  if (!clean) return;
+  if (!clean) {
+    resumeListeningAfterSpeech();
+    return;
+  }
+
   const utter = new SpeechSynthesisUtterance(clean);
   utter.lang = voiceLang.value;
   utter.rate = 1.02;
@@ -283,19 +327,57 @@ function speak(text) {
   const voices = speechSynthesis.getVoices();
   const match = voices.find(v => v.lang === utter.lang);
   if (match) utter.voice = match;
+
+  stopSpeechWatchdog();
   speechSynthesis.cancel();
   setVoiceStatus('Speaking…', true);
-  utter.onend = () => { resumeListeningAfterSpeech(); };
-  utter.onerror = () => { resumeListeningAfterSpeech(); };
-  speechSynthesis.speak(utter);
+
+  utter.onend = () => {
+    stopSpeechWatchdog();
+    resumeListeningAfterSpeech();
+  };
+  utter.onerror = () => {
+    stopSpeechWatchdog();
+    resumeListeningAfterSpeech();
+  };
+
+  setTimeout(() => {
+    if (!voiceMode) return;
+    try {
+      speechSynthesis.speak(utter);
+      speechSynthesis.resume();
+    } catch (e) {
+      stopSpeechWatchdog();
+      resumeListeningAfterSpeech();
+    }
+  }, 80);
+
+  speechWatchdog = setInterval(() => {
+    if (!speechSynthesis.speaking && !speechSynthesis.pending) {
+      stopSpeechWatchdog();
+      resumeListeningAfterSpeech();
+    }
+  }, 500);
 }
 
 function resumeListeningAfterSpeech() {
+  if (pendingSpeech.length) {
+    const text = pendingSpeech.shift();
+    inputEl.value = text;
+    send();
+    return;
+  }
   if (voiceMode && !isStreaming) {
     startListening();
   } else if (voiceMode) {
     setVoiceStatus('Re-listening…');
   }
+}
+
+function rescheduleVoice() {
+  setTimeout(() => {
+    resumeListeningAfterSpeech();
+  }, 200);
 }
 
 function initVoice() {
@@ -310,6 +392,7 @@ function initVoice() {
 async function send() {
   const text = inputEl.value.trim();
   if (!text || isStreaming) return;
+  const originalInput = inputEl.value;
 
   if (!currentConvId) newChat();
   const conv = getCurrentConv();
@@ -342,8 +425,11 @@ async function send() {
     if (!res.ok) {
       const err = await res.json();
       bodyEl.innerHTML = `<p style="color: #ef4444">${err.error || 'Something went wrong'}</p>`;
+      if (!inputEl.value.trim()) inputEl.value = originalInput;
+      typingEl.removeAttribute('id');
       isStreaming = false;
       sendBtn.disabled = false;
+      if (voiceMode) rescheduleVoice();
       return;
     }
 
@@ -381,14 +467,13 @@ async function send() {
     speak(full);
   } catch (err) {
     bodyEl.innerHTML = `<p style="color: #ef4444">Network error: ${err.message}</p>`;
-    if (voiceMode) setVoiceStatus('Speak error; resuming…');
+    if (voiceMode) rescheduleVoice();
   }
 
   typingEl.removeAttribute('id');
   isStreaming = false;
   sendBtn.disabled = false;
   inputEl.focus();
-  if (voiceMode && !speechSynthesis.speaking) resumeListeningAfterSpeech();
 }
 
 renderConversations();
